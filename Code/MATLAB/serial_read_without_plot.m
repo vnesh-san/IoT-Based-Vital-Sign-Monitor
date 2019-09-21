@@ -1,0 +1,77 @@
+ecg=0;
+spo2=0;
+resp=0;
+yin=1;
+yang=1;
+yu=1;
+i=0;
+j=0;
+k=1;
+flag=0; % flag==1 ecg recorded flag==2 spo2 recorded
+
+%ECG : header-1001  footer-1010
+%SpO2: header-1101  footer-1110
+
+data=0;
+s = serial('com9');
+set(s,'BaudRate',9600);   
+
+try
+    fopen(s);
+catch err
+    fclose(instrfind);
+    error('Make sure you select the correct COM Port where the Arduino is connected.');
+end
+Tmax=6; % time for running app
+Ts=2e-06;
+
+tic
+while toc<=Tmax   
+    
+    out =strsplit(fgetl(s));
+    data(k) =str2double(cell2mat(out(1)));
+    data(isnan(data))=-1;
+    
+    pause(0.001);
+    
+    if (data(k)==1001 | flag==1 & data(k)~=-1) & i<=8
+        flag=1;
+        if(i>=1 & i<5)
+            ecg(yin)=data(k);
+            yin=yin+1;
+        end
+        if(i>=5)
+            resp(yang)=data(k);
+            yang=yang+1;
+        end
+        if i==8
+            i=0;
+            flag=0;
+        else
+            i=i+1;
+        end
+        j=0;
+    end
+    
+    if (data(k)==1101 | flag==2 & data(k)~=-1) & j<=3
+        flag=2;
+        if (j>=1)
+            spo2(yu)=data(k);
+            yu=yu+1;
+        end
+        j=j+1;
+        i=0;
+    end
+    
+    t(k) = toc;
+    if k > 1
+        T = toc - t(k-1);
+        while T < Ts
+            T = toc - t(k-1)  ;
+        end
+    end
+    t(k) = toc;
+    k=k+1;
+    
+end
+fclose(instrfind)
